@@ -1,36 +1,37 @@
+mod config;
 mod feature_extraction;
 mod preprocessing;
+mod utils;
 
-use feature_extraction::{extract_features, SpectralConfig};
+use feature_extraction::extract_features;
+use hound;
 use ndarray::prelude::*;
-use ndarray_npy::ReadNpyExt;
-use preprocessing::{preprocess, PreprocessingConfig, WindowType};
-use std::fs::File;
+use preprocessing::preprocess;
+use std::{env, path::Path};
+
+use crate::{config::get_configs, utils::plot_features};
 
 fn main() {
-    let signal = Array1::<f32>::read_npy(File::open("path/to/signal.npy").unwrap()).unwrap();
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <path_to_signal.npy>", args[0]);
+        return;
+    }
 
-    let config = PreprocessingConfig {
-        frame_length: 512,
-        frame_shift: 256,
-        window_type: WindowType::Hamming,
-    };
+    let wav_reader = hound::WavReader::open(Path::new(&args[1])).expect("Failed to open WAV file");
+    let samples: Vec<f32> = wav_reader
+        .into_samples::<f32>()
+        .filter_map(Result::ok)
+        .collect();
+    let signal = Array1::from(samples);
 
-    let preprocessed_signal = preprocess(&signal, &config);
-
-    let config = SpectralConfig {
-        n_mfcc: 13,
-        n_fft: 1024 / 2,
-    };
-
-    let sample_rate = 16000;
-    let min_pitch = 75.0;
-    let max_pitch = 300.0;
+    let (preprocessing_config, spectral_config, sample_rate, min_pitch, max_pitch) = get_configs();
+    let preprocessed_signal = preprocess(&signal, &preprocessing_config);
 
     let (mfcc, pitch_values, voiced_frames) = extract_features(
         &preprocessed_signal,
         sample_rate,
-        &config,
+        &spectral_config,
         min_pitch,
         max_pitch,
     );
@@ -38,6 +39,8 @@ fn main() {
     println!("MFCC: {:?}", mfcc);
     println!("Pitch values: {:?}", pitch_values);
     println!("Voiced/unvoiced decisions: {:?}", voiced_frames);
+
+    plot_features(&mfcc, &pitch_values, &voiced_frames);
 
     // Perform further processing or analysis on the preprocessed_signal
 }

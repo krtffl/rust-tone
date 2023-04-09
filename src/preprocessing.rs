@@ -1,14 +1,6 @@
-extern crate ndarray;
-extern crate ndarray_npy;
-extern crate ndarray_rand;
-
 use ndarray::prelude::*;
 
-pub struct PreprocessingConfig {
-    pub frame_length: usize,
-    pub frame_shift: usize,
-    pub window_type: WindowType,
-}
+use crate::config::PreprocessingConfig;
 
 pub enum WindowType {
     Hamming,

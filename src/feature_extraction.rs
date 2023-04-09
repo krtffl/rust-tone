@@ -2,10 +2,7 @@ use ndarray::prelude::*;
 use rustdct::DctPlanner;
 use rustfft::{num_complex::Complex, FftPlanner};
 
-pub struct SpectralConfig {
-    pub n_fft: usize,
-    pub n_mfcc: usize,
-}
+use crate::config::SpectralConfig;
 
 pub fn extract_features(
     signal: &Array2<f32>,
@@ -15,7 +12,7 @@ pub fn extract_features(
     max_pitch: f32,
 ) -> (Array2<f32>, Vec<f32>, Vec<bool>) {
     let magnitude_spectrum = compute_magnitude_spectrum(signal, config.n_fft);
-    let mfcc = compute_mfcc(&magnitude_spectrum, config.n_mfcc);
+    let mfcc = compute_mfcc(&magnitude_spectrum, config.n_mfcc, sample_rate);
     let normalized_mfcc = apply_cmvn(&mfcc);
 
     let num_frames = signal.shape()[0];
@@ -111,17 +108,19 @@ fn compute_magnitude_spectrum(signal: &Array2<f32>, n_fft: usize) -> Array2<f32>
         let mut complex_frame: Vec<Complex<f32>> = frame.mapv(|x| Complex::new(x, 0.0)).to_vec();
         fft.process(&mut complex_frame);
 
-        let magnitude_frame: Array1<f32> =
-            Array1::from_iter(complex_frame.iter().take(n_fft / 2 + 1).map(|x| x.norm()));
+        let magnitude_frame = complex_frame
+            .iter()
+            .take(n_fft / 2 + 1)
+            .map(|x| x.norm())
+            .collect::<Array1<f32>>();
         spectrum.row_mut(i).assign(&magnitude_frame);
     }
 
     spectrum
 }
 
-fn compute_mfcc(spectrum: &Array2<f32>, n_mfcc: usize) -> Array2<f32> {
+fn compute_mfcc(spectrum: &Array2<f32>, n_mfcc: usize, sample_rate: usize) -> Array2<f32> {
     let n_fft = 2 * (spectrum.shape()[1] - 1);
-    let sample_rate = 16000; // Change this according to your input sample rate
     let lower_frequency = 0.0;
     let upper_frequency = sample_rate as f32 / 2.0;
 
