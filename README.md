@@ -28,3 +28,13 @@
 _for voice conversion applications, the Hamming window is generally a suitable choice due to its balance between frequency resolution and spectral leakage_
 
 the preprocessing steps of framing the signal and applying a window function prepare the voice signal for further analysis and processing in the voice conversion pipeline. these steps make it easier to extract meaningful spectral and prosodic features from the signal and apply appropriate transformations during the conversion process.
+
+## feature extraction
+
+- magnitude spectrum
+  the magnitude spectrum is computed by applying the Short-Time Fourier Transform (STFT) to the preprocessed signal. it provides the frequency-domain representation of the signal, which allows us to analyze the spectral content of the voice. in voice conversion, it is essential to capture the spectral characteristics of the source and target speakers, as they play a crucial role in determining the perceived speaker identity.
+- Mel-Frequency Cepstral Coefficients (MFCC)
+  MFCCs are a compact representation of the spectral envelope, capturing the most important features of the voice signal. the computation of MFCCs involves multiple steps:
+  - Mel Filter Bank: the Mel filter bank is used to convert the linear magnitude spectrum into a Mel-scaled spectrum. this scaling approximates the human auditory system's frequency resolution, emphasizing the frequency bands that are more perceptually relevant. in voice conversion, this helps to focus on the frequency regions that are more important for speaker identity.
+  - logarith: applying the logarithm to the Mel-scaled spectrum helps to emphasize the spectral peaks and de-emphasize the valleys. this step further approximates the human auditory system's response, which is more sensitive to relative changes in amplitude than to absolute values.
+  - Discrete Cosine Transform (DCT): the DCT is applied to the log Mel-scaled spectrum to decorrelate the spectral features, which results in a compact and robust representation of the spectral envelope. the lower-order MFCCs capture the overall spectral shape, while the higher-order MFCCs capture the detailed spectral features. in voice conversion, the lower-order MFCCs are typically more important for preserving the speaker's identity.

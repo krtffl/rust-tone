@@ -3,8 +3,6 @@ extern crate ndarray_npy;
 extern crate ndarray_rand;
 
 use ndarray::prelude::*;
-use ndarray_rand::rand_distr::Uniform;
-use ndarray_rand::RandomExt;
 
 pub struct PreprocessingConfig {
     pub frame_length: usize,
