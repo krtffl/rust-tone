@@ -1,15 +1,21 @@
-use std::ops::Range;
+use std::{fs::File, io::Write, ops::Range, path::Path};
 
 use image::RgbImage;
 use ndarray::{Array2, Axis};
 use plotters::prelude::*;
 
-pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[bool]) {
+use crate::config::ExtractedFeatures;
+
+pub fn plot_features(
+    mfcc: &Array2<f32>,
+    pitch_values: &[f32],
+    voiced_frames: &[bool],
+    index: usize,
+) {
     let num_frames = pitch_values.len();
     let width = 1200;
     let height = 400;
 
-    // Plot MFCCs
     {
         let mut mfcc_image = RgbImage::new(width, height);
 
@@ -19,14 +25,19 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
             root.fill(&WHITE).unwrap();
 
             let mut mfcc_chart = ChartBuilder::on(&root)
-                .caption("MFCCs", ("Arial", 20).into_font())
+                .caption("MFCCs computation", ("Arial", 20).into_font())
                 .margin(5)
                 .x_label_area_size(30)
                 .y_label_area_size(60)
                 .build_cartesian_2d::<Range<usize>, Range<f32>>(0..num_frames, -1.0..1.0)
                 .unwrap();
 
-            mfcc_chart.configure_mesh().draw().unwrap();
+            mfcc_chart
+                .configure_mesh()
+                .x_desc("time (frames)")
+                .y_desc("amplitude")
+                .draw()
+                .unwrap();
 
             for (i, mfcc_row) in mfcc.axis_iter(Axis(0)).enumerate() {
                 let line_data: Vec<(usize, f32)> = mfcc_row
@@ -40,10 +51,11 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
             }
         }
 
-        mfcc_image.save("mfcc_plot.png").unwrap();
+        mfcc_image
+            .save(format!("mffc_plots/mfcc_plot-{}.png", index))
+            .unwrap();
     }
 
-    // Plot pitch values
     {
         let mut pitch_image = RgbImage::new(width, height);
 
@@ -59,7 +71,7 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
                 .unwrap_or(0.0);
 
             let mut pitch_chart = ChartBuilder::on(&root)
-                .caption("Pitch values", ("Arial", 20).into_font())
+                .caption("Pitch analysis", ("Arial", 20).into_font())
                 .margin(5)
                 .x_label_area_size(30)
                 .y_label_area_size(60)
@@ -69,7 +81,12 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
                 )
                 .unwrap();
 
-            pitch_chart.configure_mesh().draw().unwrap();
+            pitch_chart
+                .configure_mesh()
+                .x_desc("time (frames)")
+                .y_desc("frequency (Hz)")
+                .draw()
+                .unwrap();
             pitch_chart
                 .draw_series(LineSeries::new(
                     pitch_values.iter().enumerate().map(|(i, &v)| (i, v)),
@@ -78,10 +95,11 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
                 .unwrap();
         }
 
-        pitch_image.save("pitch_plot.png").unwrap();
+        pitch_image
+            .save(format!("pitch_plots/pitch_plot-{}.png", index))
+            .unwrap();
     }
 
-    // Plot voiced/unvoiced decisions
     {
         let mut voiced_image = RgbImage::new(width, height);
 
@@ -91,7 +109,7 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
             root.fill(&WHITE).unwrap();
 
             let mut voiced_chart = ChartBuilder::on(&root)
-                .caption("Voiced/unvoiced decisions", ("Arial", 20).into_font())
+                .caption("Is voiced?", ("Arial", 20).into_font())
                 .margin(5)
                 .x_label_area_size(30)
                 .y_label_area_size(60)
@@ -100,6 +118,8 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
 
             voiced_chart
                 .configure_mesh()
+                .x_desc("time (frames)")
+                .y_desc("voiced (bool)")
                 .x_labels(10)
                 .y_labels(2)
                 .draw()
@@ -116,6 +136,15 @@ pub fn plot_features(mfcc: &Array2<f32>, pitch_values: &[f32], voiced_frames: &[
                 .unwrap();
         }
 
-        voiced_image.save("voiced_plot.png").unwrap();
+        voiced_image
+            .save(format!("voiced_plots/voiced_plot-{}.png", index))
+            .unwrap();
     }
+}
+
+pub fn save_extracted_features_to_json(filename: &str, features_list: &[ExtractedFeatures]) {
+    let json = serde_json::to_string_pretty(features_list).unwrap();
+    let path = Path::new(filename);
+    let mut file = File::create(&path).unwrap();
+    file.write_all(json.as_bytes()).unwrap();
 }
